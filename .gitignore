@@ -1,0 +1,9 @@
+.streamlit/secrets.toml
+__pycache__/
+*.pyc
+*.mp4
+temp_product.png
+.venv/
+venv/
+.env
+.ipynb_checkpoints/
