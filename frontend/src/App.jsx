@@ -3,6 +3,7 @@ import { UploadCloud, CheckCircle2, Loader2, PlayCircle, Link as LinkIcon, Refre
 
 export default function App() {
   const [demoMode, setDemoMode] = useState(true)
+  const [showDemoBubble, setShowDemoBubble] = useState(false)
   
   // Card 1: Asset Assembly
   const [productImage, setProductImage] = useState(null)
@@ -37,21 +38,36 @@ export default function App() {
     
     setIsCompiling(true)
     console.log("Starting compilation process...");
-    console.log(`Product Image: ${productImage.name}, Style Video: ${styleVideo ? styleVideo.name : 'None'}`);
     
-    // Simulate network delay for compilation
-    setTimeout(() => {
-      // Simulate VLM extracting the product name from the image filename
-      const baseName = productImage.name.split('.')[0];
-      const simulatedProductName = baseName.replace(/_/g, " ").replace(/-/g, " ");
+    try {
+      const formData = new FormData();
+      formData.append('product_image', productImage);
+      if (styleVideo) {
+        formData.append('style_video', styleVideo);
+      }
+      formData.append('raw_intent', rawIntent);
+
+      const response = await fetch('/api/compile-prompt', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Compilation failed');
+      }
+
+      const data = await response.json();
       
-      const simulatedPrompt = `A cinematic macro commercial shot. The camera is positioned in a static placement, framing the product container in the center. In a seamless, slow pan/zoom out motion, the product container remains perfectly still, static, and unaltered in the center. Highly detailed textures, soft studio lighting, high-end commercial advertisement style. \n\n(Intent: ${rawIntent})`;
-      
-      setExtractedProductName(simulatedProductName);
-      setCompiledPrompt(simulatedPrompt);
+      setExtractedProductName(data.product_name || "Unknown Product");
+      setCompiledPrompt(data.compiled_prompt || "");
+      console.log(`Prompt compilation finished successfully. Extracted Product: ${data.product_name}`);
+    } catch (error) {
+      console.error(error);
+      alert('Error compiling prompt: ' + error.message);
+    } finally {
       setIsCompiling(false);
-      console.log(`Prompt compilation finished successfully. Extracted Product: ${simulatedProductName}`);
-    }, 2000);
+    }
   }
 
   const handleExecutePipeline = () => {
@@ -144,31 +160,43 @@ export default function App() {
       <nav className="h-16 shrink-0 border-b border-neutral-800 bg-neutral-950 flex items-center justify-between px-4 md:px-8 z-50 shadow-sm">
         <div className="flex items-center space-x-3">
           <PlayCircle className="text-white w-6 h-6" />
-          <h1 className="text-white text-sm md:text-base font-semibold tracking-wide truncate">NOCT CREATIVE DISPATCH</h1>
+          <h1 className="text-white text-xs sm:text-sm md:text-base font-semibold tracking-wide truncate max-w-[150px] sm:max-w-none">NOCT CREATIVE DISPATCH</h1>
         </div>
-        <div className="flex items-center space-x-2 md:space-x-6">
-          <label className="flex items-center space-x-3 cursor-not-allowed opacity-80" title="Demo Mode is strictly enabled for this preview">
-            <span className="text-sm font-medium text-neutral-300">Demo Mode</span>
-            <div className="relative">
+        <div className="flex items-center space-x-2 md:space-x-6 relative">
+          <div 
+            className="flex items-center space-x-2 md:space-x-3 cursor-not-allowed opacity-80" 
+            onClick={() => {
+              setShowDemoBubble(true);
+              setTimeout(() => setShowDemoBubble(false), 2500);
+            }}
+          >
+            <span className="text-xs md:text-sm font-medium text-neutral-300 whitespace-nowrap pointer-events-none">Demo Mode</span>
+            <div className="relative pointer-events-none">
               <input 
                 type="checkbox" 
                 className="sr-only" 
                 checked={true} 
                 readOnly
-                disabled
               />
               <div className="block w-10 h-6 rounded-full transition-colors bg-neutral-600"></div>
               <div className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform transform translate-x-4"></div>
             </div>
-          </label>
+          </div>
+          
+          {showDemoBubble && (
+            <div className="absolute top-12 right-0 md:right-auto bg-neutral-800 text-xs text-white px-3 py-2 rounded shadow-lg whitespace-nowrap z-50">
+              Production Workflow under development
+              <div className="absolute -top-1 right-6 w-2 h-2 bg-neutral-800 transform rotate-45"></div>
+            </div>
+          )}
         </div>
       </nav>
 
       {/* Horizontal / Vertical Stepper Workspace */}
-      <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto md:overflow-y-hidden snap-y md:snap-x gap-6 md:gap-16 p-4 px-4 md:p-10 md:px-16 custom-scrollbar items-stretch pb-12 w-full">
+      <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto md:overflow-y-hidden snap-y snap-mandatory md:snap-x gap-8 md:gap-16 py-8 px-4 md:p-10 md:px-16 custom-scrollbar items-stretch pb-12 w-full">
         
         {/* CARD 1: Asset Assembly */}
-        <div className="snap-start md:snap-center shrink-0 w-full md:min-w-[500px] md:w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 md:p-8 shadow-xl">
+        <div className="snap-start md:snap-center shrink-0 w-full min-h-[calc(100dvh-8rem)] md:min-h-0 md:min-w-[500px] md:w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 md:p-8 shadow-xl">
           <h2 className="text-white font-medium mb-4 flex items-center space-x-2">
             <span className="bg-neutral-800 text-xs px-2 py-1 rounded-full text-neutral-300">Step 1</span>
             <span>Asset Assembly</span>
@@ -224,7 +252,7 @@ export default function App() {
         </div>
 
         {/* CARD 2: Boxed Prompt Workspace */}
-        <div className="snap-start md:snap-center shrink-0 w-full md:min-w-[500px] md:w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 md:p-8 shadow-xl">
+        <div className="snap-start md:snap-center shrink-0 w-full min-h-[calc(100dvh-8rem)] md:min-h-0 md:min-w-[500px] md:w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 md:p-8 shadow-xl">
           <h2 className="text-white font-medium mb-4 flex items-center space-x-2">
             <span className="bg-neutral-800 text-xs px-2 py-1 rounded-full text-neutral-300">Step 2</span>
             <span>Boxed Prompt Workspace</span>
@@ -242,7 +270,7 @@ export default function App() {
         </div>
 
         {/* CARD 3: Video Generation Engine */}
-        <div className="snap-start md:snap-center shrink-0 w-full md:min-w-[500px] md:w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 md:p-8 shadow-xl">
+        <div className="snap-start md:snap-center shrink-0 w-full min-h-[calc(100dvh-8rem)] md:min-h-0 md:min-w-[500px] md:w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 md:p-8 shadow-xl">
           <h2 className="text-white font-medium mb-4 flex items-center space-x-2">
             <span className="bg-neutral-800 text-xs px-2 py-1 rounded-full text-neutral-300">Step 3</span>
             <span>Generation Engine</span>
@@ -283,7 +311,7 @@ export default function App() {
         </div>
 
         {/* CARD 4: Production Archive & Delivery */}
-        <div className="snap-start md:snap-center shrink-0 w-full md:min-w-[380px] md:w-[26vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 shadow-xl">
+        <div className="snap-start md:snap-center shrink-0 w-full min-h-[calc(100dvh-8rem)] md:min-h-0 md:min-w-[380px] md:w-[26vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 shadow-xl">
           <h2 className="text-white font-medium mb-4 flex items-center space-x-2">
             <span className="bg-neutral-800 text-xs px-2 py-1 rounded-full text-neutral-300">Step 4</span>
             <span>Archive & Delivery</span>
