@@ -10,6 +10,11 @@ const videoFiles = files.filter(f => f.endsWith('.mp4'));
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      '/api': 'http://127.0.0.1:8000'
+    }
+  },
   define: {
     __AVAILABLE_VIDEOS__: JSON.stringify(videoFiles)
   },

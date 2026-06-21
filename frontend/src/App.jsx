@@ -14,6 +14,7 @@ export default function App() {
   // Card 2: Boxed Prompt Workspace
   const [compiledPrompt, setCompiledPrompt] = useState('')
   const [extractedProductName, setExtractedProductName] = useState('')
+  const [executedProductName, setExecutedProductName] = useState('')
   
   // Card 3: Video Generation Engine
   const tiers = [
@@ -110,6 +111,7 @@ export default function App() {
       console.log("Pipeline execution finished successfully.");
       setStatusEvents(prev => [...prev, { status: "Executed: SUCCESS", type: 'success' }]);
       setExecutedTier(selectedTier); // Lock in the tier for the video player
+      setExecutedProductName(extractedProductName || productImage.name.split('.')[0]); // Lock in the product name
       setWebViewLink('local-demo'); // Triggers local video loading
       setIsExecuting(false);
     }, 6500);
@@ -120,42 +122,57 @@ export default function App() {
     const availableVideos = typeof __AVAILABLE_VIDEOS__ !== 'undefined' ? __AVAILABLE_VIDEOS__ : [];
     const globalFallback = availableVideos.length > 0 ? `/${availableVideos[0]}` : "";
 
-    if (!productImage) return globalFallback;
+    if (!productImage && !executedProductName) return globalFallback;
     
-    // Use VLM-extracted product name if available, otherwise fallback to filename
-    const nameSource = extractedProductName || productImage.name.split('.')[0];
+    // Use the locked-in product name from execution time, preventing mid-generation switches
+    const nameSource = executedProductName || extractedProductName || productImage.name.split('.')[0];
     const baseName = nameSource;
-    const baseNameUs = baseName.replace(/ /g, "_");
+    
+    // Extract significant words (longer than 2 chars, ignore common terms)
+    const searchWords = baseName.toLowerCase().replace(/[^a-z0-9]/g, ' ').split(' ').filter(w => w.length > 2 && w !== 'cream' && w !== 'face' && w !== 'product' && w !== 'gel' && w !== 'the');
     
     let tierNum = 1;
     if (executedTier.includes("Tier 2")) tierNum = 2;
     if (executedTier.includes("Tier 3")) tierNum = 3;
 
-    // Filter videos that belong to this product
-    const matchingVideos = availableVideos.filter(v => 
-      v.toLowerCase().startsWith(baseName.toLowerCase()) || 
-      v.toLowerCase().startsWith(baseNameUs.toLowerCase())
-    );
+    // Score videos based on how many search words they contain
+    let bestMatchScore = 0;
+    let matchingVideos = [];
+    
+    availableVideos.forEach(v => {
+      const vNormalized = v.toLowerCase();
+      let score = 0;
+      searchWords.forEach(w => {
+        if (vNormalized.includes(w)) score++;
+      });
+      
+      // Exact match bonus
+      if (vNormalized.startsWith(baseName.toLowerCase().replace(/ /g, '_'))) score += 5;
+      
+      if (score > 0) {
+        if (score > bestMatchScore) {
+          bestMatchScore = score;
+          matchingVideos = [v];
+        } else if (score === bestMatchScore) {
+          matchingVideos.push(v);
+        }
+      }
+    });
 
     if (matchingVideos.length === 0) {
       // Global fallback if no product videos exist
       return globalFallback;
     }
 
-    const candidates = [];
-    for (let t = tierNum; t <= 3; t++) {
-      candidates.push(`${baseName}_tier${t}.mp4`.toLowerCase());
-      candidates.push(`${baseNameUs}_tier${t}.mp4`.toLowerCase());
-    }
-    candidates.push(`${baseName}.mp4`.toLowerCase());
-    candidates.push(`${baseNameUs}.mp4`.toLowerCase());
-
-    for (const cand of candidates) {
-      const found = matchingVideos.find(v => v.toLowerCase() === cand);
-      if (found) return `/${found}`;
-    }
+    // Among the best matches, look for the requested tier
+    const tierMatch = matchingVideos.find(v => v.toLowerCase().includes(`tier${tierNum}`));
+    if (tierMatch) return `/${tierMatch}`;
     
-    // If requested tier is not found, use ANY video available for this product
+    // If exact tier not found, check if the video has no tier specified
+    const genericMatch = matchingVideos.find(v => !v.toLowerCase().includes('tier'));
+    if (genericMatch) return `/${genericMatch}`;
+    
+    // Otherwise return the first matching video for this product
     return `/${matchingVideos[0]}`; 
   };
 
