@@ -32,18 +32,12 @@ npm-debug.log*
 # ──────────────────────────────────────────────────────────────────────────────
 # Media / Temporary Assets
 # ──────────────────────────────────────────────────────────────────────────────
-*.mp4
-*.avi
-*.mov
-*.jpg
-*.jpeg
-*.png
+
 temp_product.png
 temp/
 tmp/
 
 # Keep the specific demo files so the app works after cloning!
-!data/demo_generated.mp4
 
 # ──────────────────────────────────────────────────────────────────────────────
 # OS / IDE
