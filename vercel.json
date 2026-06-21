@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run --prefix frontend build",
-  "outputDirectory": "frontend/dist",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD .",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "https://noct-creative-dispatch.onrender.com/api/$1" }

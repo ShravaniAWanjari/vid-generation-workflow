@@ -115,6 +115,41 @@ export default function App() {
     }
   }
 
+  const getDemoVideoSrc = () => {
+    if (!productImage) return "/demo.mp4";
+    const baseName = productImage.name.split('.')[0];
+    const baseNameUs = baseName.replace(/ /g, "_");
+    
+    let tierNum = 1;
+    if (selectedTier.includes("Tier 2")) tierNum = 2;
+    if (selectedTier.includes("Tier 3")) tierNum = 3;
+
+    const availableVideos = [
+      "Acne_heal_cream_tier1.mp4",
+      "Acne_heal_cream_tier3.mp4",
+      "Kumkumadi_face_cream.mp4",
+      "Radiating_face_cream_tier3.mp4",
+      "radiating_face_cream_tier2.mp4"
+    ];
+
+    const candidates = [];
+    for (let t = tierNum; t <= 3; t++) {
+      candidates.push(`${baseName}_tier${t}.mp4`);
+      candidates.push(`${baseNameUs}_tier${t}.mp4`);
+    }
+    candidates.push(`${baseName}.mp4`);
+    candidates.push(`${baseNameUs}.mp4`);
+
+    for (const cand of candidates) {
+      const found = availableVideos.find(v => v.toLowerCase() === cand.toLowerCase());
+      if (found) return `/${found}`;
+    }
+    
+    return `/${availableVideos[0]}`; // Fallback
+  };
+
+  const videoSrc = !demoMode ? webViewLink : (webViewLink ? getDemoVideoSrc() : "");
+
   return (
     <div className="flex flex-col h-screen w-screen bg-neutral-950 text-neutral-400 overflow-hidden font-sans">
       
@@ -267,8 +302,8 @@ export default function App() {
           <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pr-2 space-y-5">
             {/* Video Placeholder / Player */}
             <div className="w-full aspect-video bg-black border border-neutral-800 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
-              {webViewLink && demoMode ? (
-                <video src={webViewLink} controls autoPlay loop className="w-full h-full object-cover"></video>
+              {videoSrc ? (
+                <video key={videoSrc} src={videoSrc} controls autoPlay loop className="w-full h-full object-cover"></video>
               ) : (
                 <span className="text-neutral-600 text-sm italic">{isExecuting ? 'Rendering...' : 'Watch your generated cinematic video here'}</span>
               )}
@@ -295,10 +330,10 @@ export default function App() {
             </div>
 
             {/* Final Action Button */}
-            {webViewLink && (
+            {videoSrc && (
               <div className="pt-4 mt-auto">
                 <a 
-                  href={webViewLink} 
+                  href={videoSrc} 
                   target="_blank" 
                   rel="noreferrer"
                   download="Naturo_Render.mp4"
