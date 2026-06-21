@@ -76,9 +76,43 @@ export default function App() {
     } catch (error) {
       console.log("Backend API not available. Falling back to simulation...", error);
       
-      // Simulate VLM extracting the product name from the image filename for the Vercel Demo
-      const baseName = productImage.name.split('.')[0];
-      const simulatedProductName = baseName.replace(/_/g, " ").replace(/-/g, " ");
+      // Attempt to call Gemini Vision directly from the frontend if API key is provided
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      let simulatedProductName = "";
+      
+      if (apiKey && productImage) {
+        try {
+          const reader = new FileReader();
+          reader.readAsDataURL(productImage);
+          await new Promise(resolve => reader.onload = resolve);
+          const base64Image = reader.result.split(',')[1];
+          
+          const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: "Identify the exact product name from this image. Output ONLY the short product name (e.g. 'Radiating Face Cream', 'Kumkumadi Face Cream'). Do not include any other text." },
+                  { inlineData: { mimeType: productImage.type || 'image/png', data: base64Image } }
+                ]
+              }]
+            })
+          });
+          
+          const geminiData = await geminiResponse.json();
+          simulatedProductName = geminiData.candidates[0].content.parts[0].text.trim();
+          console.log("Direct Gemini Vision extraction:", simulatedProductName);
+        } catch (err) {
+          console.error("Direct Gemini call failed:", err);
+        }
+      }
+      
+      if (!simulatedProductName) {
+        const baseName = productImage.name.split('.')[0];
+        simulatedProductName = baseName.replace(/_/g, " ").replace(/-/g, " ");
+        console.log("Fell back to filename extraction:", simulatedProductName);
+      }
       
       const simulatedPrompt = `A cinematic macro commercial shot. The camera is positioned in a static placement, framing the product container in the center. In a seamless, slow pan/zoom out motion, the product container remains perfectly still, static, and unaltered in the center. Highly detailed textures, soft studio lighting, high-end commercial advertisement style. \n\n(Intent: ${rawIntent})`;
       
