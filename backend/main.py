@@ -42,6 +42,10 @@ class StreamGenerationRequest(BaseModel):
 # Endpoints
 # ──────────────────────────────────────────────────────────────────────────────
 
+@app.get("/")
+async def root_health_check():
+    return {"status": "online"}
+
 @app.get("/api/download-video")
 async def download_video(video_name: str = Query("demo_generated.mp4")):
     video_path = os.path.join("data", video_name)

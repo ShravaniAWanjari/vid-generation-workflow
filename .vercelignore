@@ -5,3 +5,4 @@ __pycache__/
 .streamlit/
 *.py
 *.mp4
+node_modules/
