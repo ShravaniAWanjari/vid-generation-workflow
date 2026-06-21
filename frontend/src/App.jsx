@@ -45,6 +45,8 @@ export default function App() {
       formData.append('product_image', productImage);
       if (styleVideo) {
         formData.append('style_video', styleVideo);
+      } else {
+        formData.append('style_video', new File([""], "empty.mp4", { type: "video/mp4" }));
       }
       formData.append('raw_intent', rawIntent);
 

@@ -78,7 +78,7 @@ async def compile_prompt(
                 f.write(await product_image.read())
 
             kf_paths = []
-            if style_video:
+            if style_video and style_video.filename != "empty.mp4" and style_video.filename != "":
                 vid_path = os.path.join(temp_dir, style_video.filename)
                 with open(vid_path, "wb") as f:
                     f.write(await style_video.read())
