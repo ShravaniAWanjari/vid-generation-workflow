@@ -20,8 +20,8 @@ app = FastAPI(title="Naturo AI Engine API")
 # Configure CORS for Vercel integration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all origins in dev
-    allow_credentials=True,
+    allow_origins=["*"], # Allow all origins
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

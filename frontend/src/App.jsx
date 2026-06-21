@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { UploadCloud, CheckCircle2, Loader2, PlayCircle, Link as LinkIcon, RefreshCw, XCircle } from 'lucide-react'
 
-const API_BASE_URL = "https://noct-creative-dispatch.onrender.com"
+const API_BASE_URL = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || import.meta.env.VITE_API_URL || "https://noct-creative-dispatch.onrender.com"
 
 export default function App() {
   const [demoMode, setDemoMode] = useState(true)
