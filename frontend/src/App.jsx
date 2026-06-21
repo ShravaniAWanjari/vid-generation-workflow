@@ -53,8 +53,16 @@ export default function App() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Compilation failed');
+        let errorMsg = 'Compilation failed';
+        try {
+          const errorData = await response.json();
+          errorMsg = typeof errorData.detail === 'string' 
+            ? errorData.detail 
+            : JSON.stringify(errorData.detail || errorData);
+        } catch(e) {
+          errorMsg = `HTTP Error ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
