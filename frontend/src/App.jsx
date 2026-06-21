@@ -124,28 +124,36 @@ export default function App() {
     if (selectedTier.includes("Tier 2")) tierNum = 2;
     if (selectedTier.includes("Tier 3")) tierNum = 3;
 
-    const availableVideos = [
-      "Acne_heal_cream_tier1.mp4",
-      "Acne_heal_cream_tier3.mp4",
-      "Kumkumadi_face_cream.mp4",
-      "Radiating_face_cream_tier3.mp4",
-      "radiating_face_cream_tier2.mp4"
-    ];
+    // Dynamically fetch all mp4 files from the public folder
+    const videoModules = import.meta.glob('/public/*.mp4', { eager: true, query: '?url' });
+    const availableVideos = Object.keys(videoModules).map(path => path.replace('/public/', ''));
+
+    // Filter videos that belong to this product
+    const matchingVideos = availableVideos.filter(v => 
+      v.toLowerCase().startsWith(baseName.toLowerCase()) || 
+      v.toLowerCase().startsWith(baseNameUs.toLowerCase())
+    );
+
+    if (matchingVideos.length === 0) {
+      // Global fallback if no product videos exist
+      return availableVideos.length > 0 ? `/${availableVideos[0]}` : "/demo.mp4";
+    }
 
     const candidates = [];
     for (let t = tierNum; t <= 3; t++) {
-      candidates.push(`${baseName}_tier${t}.mp4`);
-      candidates.push(`${baseNameUs}_tier${t}.mp4`);
+      candidates.push(`${baseName}_tier${t}.mp4`.toLowerCase());
+      candidates.push(`${baseNameUs}_tier${t}.mp4`.toLowerCase());
     }
-    candidates.push(`${baseName}.mp4`);
-    candidates.push(`${baseNameUs}.mp4`);
+    candidates.push(`${baseName}.mp4`.toLowerCase());
+    candidates.push(`${baseNameUs}.mp4`.toLowerCase());
 
     for (const cand of candidates) {
-      const found = availableVideos.find(v => v.toLowerCase() === cand.toLowerCase());
+      const found = matchingVideos.find(v => v.toLowerCase() === cand);
       if (found) return `/${found}`;
     }
     
-    return `/${availableVideos[0]}`; // Fallback
+    // If requested tier is not found, use ANY video available for this product
+    return `/${matchingVideos[0]}`; 
   };
 
   const videoSrc = !demoMode ? webViewLink : (webViewLink ? getDemoVideoSrc() : "");
@@ -286,7 +294,7 @@ export default function App() {
               className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors disabled:opacity-50"
             >
               {isExecuting ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
-              <span>{isExecuting ? 'Engine Running...' : 'Commit Production Render'}</span>
+              <span>{isExecuting ? 'Engine Running...' : 'Generate'}</span>
             </button>
           </div>
         </div>
