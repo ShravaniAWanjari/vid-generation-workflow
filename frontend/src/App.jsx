@@ -12,6 +12,7 @@ export default function App() {
   
   // Card 2: Boxed Prompt Workspace
   const [compiledPrompt, setCompiledPrompt] = useState('')
+  const [extractedProductName, setExtractedProductName] = useState('')
   
   // Card 3: Video Generation Engine
   const tiers = [
@@ -28,21 +29,27 @@ export default function App() {
   const [hasError, setHasError] = useState(false)
 
   const handleCompilePrompt = async () => {
-    if (!productImage || !styleVideo || !rawIntent) {
-      alert('Please provide Product Image, Style Video, and Raw Intent.')
+    if (!productImage || !rawIntent) {
+      alert('Please provide a Product Image and Raw Intent.')
       return
     }
     
     setIsCompiling(true)
     console.log("Starting compilation process...");
-    console.log(`Product Image: ${productImage.name}, Style Video: ${styleVideo.name}`);
+    console.log(`Product Image: ${productImage.name}, Style Video: ${styleVideo ? styleVideo.name : 'None'}`);
     
     // Simulate network delay for compilation
     setTimeout(() => {
+      // Simulate VLM extracting the product name from the image filename
+      const baseName = productImage.name.split('.')[0];
+      const simulatedProductName = baseName.replace(/_/g, " ").replace(/-/g, " ");
+      
       const simulatedPrompt = `A cinematic macro commercial shot. The camera is positioned in a static placement, framing the product container in the center. In a seamless, slow pan/zoom out motion, the product container remains perfectly still, static, and unaltered in the center. Highly detailed textures, soft studio lighting, high-end commercial advertisement style. \n\n(Intent: ${rawIntent})`;
+      
+      setExtractedProductName(simulatedProductName);
       setCompiledPrompt(simulatedPrompt);
       setIsCompiling(false);
-      console.log("Prompt compilation finished successfully.");
+      console.log(`Prompt compilation finished successfully. Extracted Product: ${simulatedProductName}`);
     }, 2000);
   }
 
@@ -89,7 +96,9 @@ export default function App() {
 
     if (!productImage) return globalFallback;
     
-    const baseName = productImage.name.split('.')[0];
+    // Use VLM-extracted product name if available, otherwise fallback to filename
+    const nameSource = extractedProductName || productImage.name.split('.')[0];
+    const baseName = nameSource;
     const baseNameUs = baseName.replace(/ /g, "_");
     
     let tierNum = 1;
@@ -176,9 +185,12 @@ export default function App() {
             
             <div>
               <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Style Reference (MP4)</label>
-              <div className="border border-dashed border-neutral-700 bg-neutral-900 rounded-lg p-4 hover:border-neutral-500 transition-colors cursor-pointer relative group flex items-center justify-center h-24">
-                <input type="file" accept="video/mp4" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setStyleVideo(e.target.files[0])} />
+              <div className="relative border-2 border-dashed border-neutral-800 hover:border-neutral-600 bg-neutral-900/50 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors">
+                <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => setStyleVideo(e.target.files[0])} />
                 <div className="text-center">
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs text-neutral-500 mb-1">Style Video <span className="bg-neutral-800 text-neutral-400 px-1.5 rounded ml-1">Optional</span></span>
+                  </div>
                   {styleVideo ? <span className="text-white text-sm">{styleVideo.name}</span> : <div className="flex flex-col items-center"><UploadCloud className="w-5 h-5 text-neutral-500 mb-1" /><span className="text-xs text-neutral-500">Drop MP4 here</span></div>}
                 </div>
               </div>

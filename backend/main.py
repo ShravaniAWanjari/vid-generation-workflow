@@ -5,6 +5,7 @@ load_dotenv()
 import tempfile
 import json
 import asyncio
+from typing import Optional
 from fastapi import FastAPI, UploadFile, Form, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
@@ -58,32 +59,39 @@ async def download_video(video_name: str = Query("demo_generated.mp4")):
 @app.post("/api/compile-prompt")
 async def compile_prompt(
     product_image: UploadFile = File(...),
-    style_video: UploadFile = File(...),
+    style_video: Optional[UploadFile] = File(None),
     raw_intent: str = Form(...)
 ):
     """
-    Receives product image and style video, saves them temporarily, 
-    runs keyframe extraction and spatial prompt compilation, and returns the prompt string.
+    Receives product image and optional style video, saves them temporarily, 
+    runs keyframe extraction (if video provided) and spatial prompt compilation, and returns the result.
     """
     try:
         # Create a secure temporary directory for processing
         with tempfile.TemporaryDirectory() as temp_dir:
             img_path = os.path.join(temp_dir, product_image.filename)
-            vid_path = os.path.join(temp_dir, style_video.filename)
             kf_dir = os.path.join(temp_dir, "keyframes")
             os.makedirs(kf_dir, exist_ok=True)
             
-            # Save uploaded files
+            # Save uploaded image
             with open(img_path, "wb") as f:
                 f.write(await product_image.read())
-            with open(vid_path, "wb") as f:
-                f.write(await style_video.read())
+
+            kf_paths = []
+            if style_video:
+                vid_path = os.path.join(temp_dir, style_video.filename)
+                with open(vid_path, "wb") as f:
+                    f.write(await style_video.read())
+                kf_paths = extract_keyframes(vid_path, kf_dir)
                 
             # Execute Python modules
-            kf_paths = extract_keyframes(vid_path, kf_dir)
-            compiled_prompt_str = compile_spatial_prompt(img_path, kf_paths, raw_intent)
+            compilation_result = compile_spatial_prompt(img_path, kf_paths, raw_intent)
             
-            return {"compiled_prompt": compiled_prompt_str}
+            # compilation_result is now a dict containing 'product_name' and 'compiled_prompt', or 'error'
+            if "error" in compilation_result:
+                raise HTTPException(status_code=400, detail=compilation_result["error"])
+
+            return compilation_result
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
