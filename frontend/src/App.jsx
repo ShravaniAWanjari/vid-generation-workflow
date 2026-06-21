@@ -83,9 +83,8 @@ export default function App() {
   }
 
   const getDemoVideoSrc = () => {
-    // Dynamically fetch all mp4 files from the public folder
-    const videoModules = import.meta.glob('/public/*.mp4', { eager: true, query: '?url' });
-    const availableVideos = Object.keys(videoModules).map(path => path.replace('/public/', ''));
+    // Read videos provided by vite.config.js global define
+    const availableVideos = typeof __AVAILABLE_VIDEOS__ !== 'undefined' ? __AVAILABLE_VIDEOS__ : [];
     const globalFallback = availableVideos.length > 0 ? `/${availableVideos[0]}` : "";
 
     if (!productImage) return globalFallback;
