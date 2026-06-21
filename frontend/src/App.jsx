@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { UploadCloud, CheckCircle2, Loader2, PlayCircle, Link as LinkIcon, RefreshCw, XCircle } from 'lucide-react'
+import { UploadCloud, CheckCircle2, Loader2, PlayCircle, Link as LinkIcon, RefreshCw, XCircle, Lightbulb } from 'lucide-react'
 
 export default function App() {
   const [demoMode, setDemoMode] = useState(true)
@@ -62,15 +62,15 @@ export default function App() {
 
     // Simulate Server-Sent Events flow
     const sequence = [
-      { msg: "Extracting Keyframes...", delay: 1500 },
-      { msg: "Compiling Spatial VLM Prompt...", delay: 3000 },
-      { msg: "Archiving to Studio Drive...", delay: 4500 },
+      { msg: "Extracting Keyframes...", delay: 1500, evtType: 'success' },
+      { msg: "Compiling Spatial VLM Prompt...", delay: 3000, evtType: 'success' },
+      { msg: "Archiving to Studio Drive (Upcoming feature)", delay: 4500, evtType: 'upcoming' },
     ];
 
-    sequence.forEach(({ msg, delay }) => {
+    sequence.forEach(({ msg, delay, evtType }) => {
       setTimeout(() => {
         console.log(`Pipeline Status: ${msg}`);
-        setStatusEvents(prev => [...prev, { status: msg, type: 'success' }]);
+        setStatusEvents(prev => [...prev, { status: msg, type: evtType }]);
       }, delay);
     });
 
@@ -290,11 +290,13 @@ export default function App() {
                 <div key={idx} className={`text-xs px-3 py-2 border rounded-full inline-flex w-fit items-center space-x-2
                   ${evt.type === 'pending' ? 'border-blue-500/30 text-blue-400 bg-blue-500/10' : 
                     evt.type === 'error' ? 'border-red-500/30 text-red-400 bg-red-500/10' : 
+                    evt.type === 'upcoming' ? 'border-amber-500/30 text-amber-400 bg-amber-500/10' :
                     'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'}`}
                 >
                   {evt.type === 'pending' && <Loader2 className="w-3 h-3 animate-spin" />}
                   {evt.type === 'success' && <CheckCircle2 className="w-3 h-3" />}
                   {evt.type === 'error' && <XCircle className="w-3 h-3" />}
+                  {evt.type === 'upcoming' && <Lightbulb className="w-3 h-3" />}
                   <span>{evt.status}</span>
                 </div>
               ))}
