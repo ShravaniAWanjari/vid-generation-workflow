@@ -78,7 +78,7 @@ def execute_video_pipeline(payload: dict):
         # Bypass Google Drive API and use a direct local download link
         upload_metadata = {
             'file_id': 'local',
-            'webViewLink': f'http://localhost:8000/api/download-video?video_name={os.path.basename(video_path)}'
+            'webViewLink': f'https://noct-creative-dispatch.onrender.com/api/download-video?video_name={os.path.basename(video_path)}'
         }
         
         final_storage_metadata_array = [upload_metadata]

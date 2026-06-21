@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { UploadCloud, CheckCircle2, Loader2, PlayCircle, Link as LinkIcon, RefreshCw, XCircle } from 'lucide-react'
 
+const API_BASE_URL = "https://noct-creative-dispatch.onrender.com"
+
 export default function App() {
   const [demoMode, setDemoMode] = useState(true)
   
@@ -41,7 +43,7 @@ export default function App() {
     formData.append('raw_intent', rawIntent)
 
     try {
-      const response = await fetch('http://localhost:8000/api/compile-prompt', {
+      const response = await fetch(`${API_BASE_URL}/api/compile-prompt`, {
         method: 'POST',
         body: formData
       })
@@ -77,7 +79,7 @@ export default function App() {
       product_image_name: productImage ? productImage.name : "demo_generated.png"
     })
 
-    const evtSource = new EventSource(`http://localhost:8000/api/stream-generation?${params.toString()}`)
+    const evtSource = new EventSource(`${API_BASE_URL}/api/stream-generation?${params.toString()}`)
     
     evtSource.onmessage = (e) => {
       const data = JSON.parse(e.data)

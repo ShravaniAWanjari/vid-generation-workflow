@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD .",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://YOUR_RENDER_BACKEND_URL.onrender.com/api/$1" }
+  ]
+}

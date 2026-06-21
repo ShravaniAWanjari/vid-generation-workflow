@@ -14,13 +14,14 @@ AI-powered cosmetics animation tool. Upload a product image, write a prompt, get
 ## Quick Start (Two Modes)
 
 ### Mode 1: Instant Mock Mode (Recommended for quick testing / No GPU required)
+
 This runs the entire container orchestration (FastAPI + Streamlit) instantly on **any computer** without downloading the 10GB model or needing a GPU. It uses the pre-generated sample `demo.mp4` to simulate generation.
 
 1. Start the services with `MOCK_INFERENCE=true`:
    ```bash
    $env:MOCK_INFERENCE="true"; docker compose up --build
    ```
-   *(Or on Linux/macOS)*:
+   _(Or on Linux/macOS)_:
    ```bash
    MOCK_INFERENCE=true docker compose up --build
    ```
@@ -30,6 +31,7 @@ This runs the entire container orchestration (FastAPI + Streamlit) instantly on 
 ---
 
 ### Mode 2: Full Local GPU Execution (Wan2.2-TI2V-5B Model)
+
 Runs the model locally on your Nvidia GPU. Downloads ~10GB of weights from Hugging Face on first run.
 
 1. (Optional) Provide your Hugging Face Token for faster rates:
@@ -41,12 +43,14 @@ Runs the model locally on your Nvidia GPU. Downloads ~10GB of weights from Huggi
    docker compose up --build
    ```
 3. Open **http://localhost:8501** in your browser.
-   * *Note: The system status card in the UI will display **System Initializing** while the model downloads. Once ready, it automatically updates to **System Online & Ready**.*
+   - _Note: The system status card in the UI will display **System Initializing** while the model downloads. Once ready, it automatically updates to **System Online & Ready**._
 4. Generate cosmetic animations on your local GPU.
 
 ---
 
 ## Technical Architecture
 
-* **`inference` container (Port 8000)**: Serves a FastAPI backend. In GPU mode, loads the `WanImageToVideoPipeline` using PyTorch & Hugging Face Diffusers. Slices and tiles video frame computations to run efficiently on an 8GB GPU.
-* **`app` container (Port 8501)**: Serves a highly polished Streamlit UI using a custom responsive typography grid, status ping loops, and visual assets.
+- **`inference` container (Port 8000)**: Serves a FastAPI backend. In GPU mode, loads the `WanImageToVideoPipeline` using PyTorch & Hugging Face Diffusers. Slices and tiles video frame computations to run efficiently on an 8GB GPU.
+- **`app` container (Port 8501)**: Serves a highly polished Streamlit UI using a custom responsive typography grid, status ping loops, and visual assets.
+
+https://noct-creative-dispatch.onrender.com
