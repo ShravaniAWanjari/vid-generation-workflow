@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { UploadCloud, CheckCircle2, Loader2, PlayCircle, Link as LinkIcon, RefreshCw, XCircle } from 'lucide-react'
 
-const API_BASE_URL = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) || import.meta.env.VITE_API_URL || "https://noct-creative-dispatch.onrender.com"
-
 export default function App() {
   const [demoMode, setDemoMode] = useState(true)
   
@@ -29,7 +27,6 @@ export default function App() {
   const [webViewLink, setWebViewLink] = useState('')
   const [hasError, setHasError] = useState(false)
 
-  // Handlers
   const handleCompilePrompt = async () => {
     if (!productImage || !styleVideo || !rawIntent) {
       alert('Please provide Product Image, Style Video, and Raw Intent.')
@@ -37,27 +34,16 @@ export default function App() {
     }
     
     setIsCompiling(true)
-    const formData = new FormData()
-    formData.append('product_image', productImage)
-    formData.append('style_video', styleVideo)
-    formData.append('raw_intent', rawIntent)
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/compile-prompt`, {
-        method: 'POST',
-        body: formData
-      })
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Compilation Failed')
-      }
-      const data = await response.json()
-      setCompiledPrompt(data.compiled_prompt)
-    } catch (err) {
-      alert(err.message)
-    } finally {
-      setIsCompiling(false)
-    }
+    console.log("Starting compilation process...");
+    console.log(`Product Image: ${productImage.name}, Style Video: ${styleVideo.name}`);
+    
+    // Simulate network delay for compilation
+    setTimeout(() => {
+      const simulatedPrompt = `A cinematic macro commercial shot. The camera is positioned in a static placement, framing the product container in the center. In a seamless, slow pan/zoom out motion, the product container remains perfectly still, static, and unaltered in the center. Highly detailed textures, soft studio lighting, high-end commercial advertisement style. \n\n(Intent: ${rawIntent})`;
+      setCompiledPrompt(simulatedPrompt);
+      setIsCompiling(false);
+      console.log("Prompt compilation finished successfully.");
+    }, 2000);
   }
 
   const handleExecutePipeline = () => {
@@ -70,49 +56,30 @@ export default function App() {
     setStatusEvents([])
     setWebViewLink('')
     setHasError(false)
-
-    // Build query params
-    const params = new URLSearchParams({
-      demo_mode: demoMode,
-      compiled_prompt: compiledPrompt,
-      selected_tier: selectedTier,
-      product_image_name: productImage ? productImage.name : "demo_generated.png"
-    })
-
-    const evtSource = new EventSource(`${API_BASE_URL}/api/stream-generation?${params.toString()}`)
     
-    evtSource.onmessage = (e) => {
-      const data = JSON.parse(e.data)
-      
-      if (data.error) {
-        setHasError(true)
-        setStatusEvents(prev => [...prev.map(evt => ({...evt, type: evt.type === 'pending' ? 'error' : evt.type})), { status: data.error, type: 'error' }])
-        evtSource.close()
-        setIsExecuting(false)
-        return
-      }
+    console.log("Executing video generation pipeline...");
+    console.log(`Selected Tier: ${selectedTier}`);
 
-      if (data.done) {
-        setStatusEvents(prev => [...prev.map(evt => ({...evt, type: 'success'})), { status: `Executed: ${data.status}`, type: 'success' }])
-        
-        // Extract webViewLink from metadata
-        if (data.metadata && data.metadata.length > 0) {
-          setWebViewLink(data.metadata[0].webViewLink || '')
-        }
-        
-        evtSource.close()
-        setIsExecuting(false)
-      } else {
-        setStatusEvents(prev => [...prev.map(evt => ({...evt, type: 'success'})), { status: data.status, type: 'pending' }])
-      }
-    }
+    // Simulate Server-Sent Events flow
+    const sequence = [
+      { msg: "Extracting Keyframes...", delay: 1500 },
+      { msg: "Compiling Spatial VLM Prompt...", delay: 3000 },
+      { msg: "Archiving to Studio Drive...", delay: 4500 },
+    ];
 
-    evtSource.onerror = () => {
-      setHasError(true)
-      setStatusEvents(prev => [...prev, { status: 'Connection to engine lost.', type: 'error' }])
-      evtSource.close()
-      setIsExecuting(false)
-    }
+    sequence.forEach(({ msg, delay }) => {
+      setTimeout(() => {
+        console.log(`Pipeline Status: ${msg}`);
+        setStatusEvents(prev => [...prev, { status: msg, type: 'success' }]);
+      }, delay);
+    });
+
+    setTimeout(() => {
+      console.log("Pipeline execution finished successfully.");
+      setStatusEvents(prev => [...prev, { status: "Executed: SUCCESS", type: 'success' }]);
+      setWebViewLink('local-demo'); // Triggers local video loading
+      setIsExecuting(false);
+    }, 6500);
   }
 
   const getDemoVideoSrc = () => {
