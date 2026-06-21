@@ -73,7 +73,8 @@ export default function App() {
     const params = new URLSearchParams({
       demo_mode: demoMode,
       compiled_prompt: compiledPrompt,
-      selected_tier: selectedTier
+      selected_tier: selectedTier,
+      product_image_name: productImage ? productImage.name : "demo_generated.png"
     })
 
     const evtSource = new EventSource(`http://localhost:8000/api/stream-generation?${params.toString()}`)
@@ -119,7 +120,7 @@ export default function App() {
       <nav className="h-16 shrink-0 border-b border-neutral-800 bg-neutral-950 flex items-center justify-between px-8 z-50 shadow-sm">
         <div className="flex items-center space-x-3">
           <PlayCircle className="text-white w-6 h-6" />
-          <h1 className="text-white font-semibold tracking-wide">NATURO CREATIVE DISPATCH</h1>
+          <h1 className="text-white font-semibold tracking-wide">NOCT CREATIVE DISPATCH</h1>
         </div>
         <div className="flex items-center space-x-6">
           <label className="flex items-center space-x-3 cursor-pointer">
@@ -265,9 +266,9 @@ export default function App() {
             {/* Video Placeholder / Player */}
             <div className="w-full aspect-video bg-black border border-neutral-800 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
               {webViewLink && demoMode ? (
-                <video src="http://localhost:8000/api/download-video" controls autoPlay loop className="w-full h-full object-cover"></video>
+                <video src={webViewLink} controls autoPlay loop className="w-full h-full object-cover"></video>
               ) : (
-                <span className="text-neutral-600 text-sm italic">{isExecuting ? 'Rendering...' : 'Video Player Placeholder'}</span>
+                <span className="text-neutral-600 text-sm italic">{isExecuting ? 'Rendering...' : 'Watch your generated cinematic video here'}</span>
               )}
             </div>
 

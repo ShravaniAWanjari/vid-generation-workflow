@@ -1,73 +1,260 @@
-Prompt 2: The Foreground Extraction Module
-Goal: Integrate the exact programmatic logic to strip the background without distorting the product.
+# Naturo Animation Generator — Streamlit App Agent Instructions
 
-Copy and paste this into your coding agent:
+## What to build
 
-Now we will implement the actual logic for Step 1: Background Isolation.
+A single-page Streamlit app hosted on Streamlit Cloud.
+The app takes a product image + text prompt from the user,
+sends both to an external inference endpoint (Kaggle notebook exposed via ngrok),
+and returns a downloadable .mp4 video.
 
-Add rembg to our requirements.txt.
+---
 
-Update the main application script. Inside the first step of our st.status block, take the uploaded_file and open it using PIL.Image.
+## File structure
 
-Pass the image through rembg.remove() to isolate the foreground.
+```
+naturo-app/
+├── app.py
+├── requirements.txt
+└── .streamlit/
+    └── secrets.toml   ← already exists, do not create or overwrite
+```
 
-Save the resulting transparent image to the local disk as temp_product.png.
+---
 
-Below the file uploader (before the generate button is clicked), add a feature that automatically displays the transparent temp_product.png preview as soon as the user uploads an image, so they can verify the extraction worked before initiating the full video pipeline.
+## secrets.toml (already set, just read these)
 
-Handle potential PIL image format errors gracefully using a try/except block and use st.error if the extraction fails.
+```python
+INFERENCE_URL = st.secrets["INFERENCE_URL"]  # e.g. https://abc123.ngrok-free.app
+```
 
-Prompt 3: The Video API & Prompt Engine
-Goal: Connect to the external video generator (Fal.ai is recommended here for developer stability, but you can swap it for Runway if you have the API key) and handle the API polling.
+This URL changes every time the Kaggle notebook restarts.
+The user will paste the new ngrok URL in the sidebar to override it.
 
-Copy and paste this into your coding agent:
+---
 
-Phase 3: Implement the prompt expansion and Video API integration.
+## app.py
 
-Create a function generate_background_video(ingredients_text, api_key).
+### Imports and config
 
-Inside this function, construct the following prompt structure: "Cinematic macro time-lapse photography of {ingredients_text} blooming and unfurling, highly detailed organic textures, soft studio lighting, clean defocus bokeh background, shallow depth of field, high-end commercial cosmetics advertisement style, 8k resolution."
+```python
+import io, os, requests, time
+import streamlit as st
+from PIL import Image
 
-Write the exact Python requests logic to send this prompt to the Fal.ai Text-to-Video API endpoint (or a generic placeholder endpoint if I specify later).
+st.set_page_config(
+    page_title="Naturo – Animation Generator",
+    page_icon="🌿",
+    layout="centered",
+)
+```
 
-Implement a polling mechanism using a while loop that checks the API status every 5 seconds until the video URL is returned or it times out after 120 seconds.
+### Inference URL resolution
 
-Download the returned .mp4 and save it locally as bg_video.mp4.
+Read from sidebar input first, fall back to secrets:
 
-Integrate this function into Step 2 and Step 3 of our Streamlit st.status block. Read the API key securely from st.secrets["VIDEO_API_KEY"]. If the key is missing, halt execution and throw an st.error.
+```python
+with st.sidebar:
+    st.header("⚙️ Settings")
 
-Prompt 4: Programmatic Compositing (The Core IP)
-Goal: Stitch the transparent product over the blooming background using code to guarantee absolute visual consistency.
+    custom_url = st.text_input(
+        "Inference URL",
+        placeholder="https://abc123.ngrok-free.app",
+        help="Paste the ngrok URL printed by the Kaggle notebook"
+    )
 
-Copy and paste this into your coding agent:
+    inference_url = custom_url.strip().rstrip("/") if custom_url.strip() \
+        else st.secrets.get("INFERENCE_URL", "").rstrip("/")
 
-Phase 4: Implement the final programmatic compositing using moviepy.
+    if inference_url:
+        st.caption(f"Using: `{inference_url}`")
+    else:
+        st.warning("No inference URL set. Paste the ngrok URL above.")
 
-Add moviepy to requirements.txt.
+    st.divider()
+    st.header("🎬 Video Settings")
+    num_frames   = st.slider("Frames", min_value=16, max_value=81, value=49, step=8,
+                              help="49 frames ≈ 3s at 16fps")
+    size_choice  = st.selectbox("Resolution", ["832x480", "480x832", "624x624"], index=0)
+    steps        = st.slider("Inference steps", min_value=15, max_value=40, value=25)
+    guidance     = st.slider("Guidance scale", min_value=1.0, max_value=10.0, value=5.0, step=0.5)
+    neg_prompt   = st.text_area("Negative prompt (optional)",
+                                 placeholder="blurry, distorted, watermark, text overlay",
+                                 height=80)
+```
 
-Create a compositing block in Step 4 of our Streamlit pipeline.
+### Main layout
 
-Load the downloaded bg_video.mp4 using VideoFileClip.
+Two columns: left = image upload, right = prompt.
 
-Load the temp_product.png using ImageClip.
+```python
+st.title("🌿 Naturo Animation Generator")
+st.caption("Upload a product image and describe the animation. The model will generate a blooming ingredient video.")
+st.divider()
 
-Set the duration of the ImageClip to match the VideoFileClip.
+col1, col2 = st.columns([1, 1], gap="large")
 
-Resize the ImageClip so its height is exactly 75% of the background video's height.
+with col1:
+    st.subheader("Product image")
+    uploaded = st.file_uploader(
+        "Upload product photo",
+        type=["png", "jpg", "jpeg", "webp"],
+        label_visibility="collapsed"
+    )
+    if uploaded:
+        img = Image.open(uploaded).convert("RGB")
+        st.image(img, use_container_width=True)
+        st.caption(f"{img.width} × {img.height}px")
 
-Position the ImageClip exactly in the bottom-center of the frame (('center', 'bottom')).
+with col2:
+    st.subheader("Prompt")
+    prompt = st.text_area(
+        "Describe the animation",
+        height=220,
+        placeholder="Rose flowers and tamarind pods slowly bloom and grow from behind the product. "
+                    "Camera gently zooms out. Soft bokeh background, warm studio lighting. "
+                    "Cinematic macro shot, premium cosmetics advertisement style.",
+        label_visibility="collapsed"
+    )
+    st.caption(f"{len(prompt)} characters")
+```
 
-Composite the two clips together using CompositeVideoClip.
+### Generate button and flow
 
-Write the final output to naturo_final_delivery.mp4 using the libx264 video codec and aac audio codec.
+```python
+st.divider()
 
-Once the video is rendered, display it in the Streamlit app using st.video().
+can_generate = bool(uploaded and prompt.strip() and inference_url)
+missing = []
+if not inference_url: missing.append("inference URL (sidebar)")
+if not uploaded:      missing.append("product image")
+if not prompt.strip(): missing.append("prompt")
+if missing:
+    st.info(f"Still needed: {', '.join(missing)}")
 
-Add an st.download_button so the user can download the final MP4.
+generate = st.button(
+    "✨ Generate video",
+    disabled=not can_generate,
+    use_container_width=True,
+    type="primary"
+)
 
-Checkpoints for You
-As the agent writes this code, watch out for these common failure points:
+if generate and can_generate:
+    w, h = map(int, size_choice.split("x"))
 
-MoviePy Audio Bug: moviepy sometimes throws errors if the generated background video lacks an audio track. If the agent's code fails on the .write_videofile() step, instruct the agent to add audio=False to the render command.
+    # Prepare image bytes
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
 
-Image Modes: rembg outputs an RGBA image. If the agent tries to save it as a .jpg, it will crash. Ensure it strictly saves the extracted product as a .png to preserve the alpha channel.
+    status  = st.status("Starting generation…", state="running")
+    prog    = st.progress(0)
+    start   = time.time()
+
+    try:
+        status.update(label="Sending to inference server…")
+        prog.progress(10)
+
+        response = requests.post(
+            f"{inference_url}/generate",
+            files={"image": ("product.png", buf, "image/png")},
+            data={
+                "prompt":               prompt.strip(),
+                "negative_prompt":      neg_prompt.strip(),
+                "num_frames":           num_frames,
+                "width":                w,
+                "height":               h,
+                "num_inference_steps":  steps,
+                "guidance_scale":       guidance,
+            },
+            timeout=600,   # generation takes 3-8 min on P100
+            stream=True,
+        )
+
+        prog.progress(90)
+
+        if response.status_code == 200:
+            video_bytes = response.content
+            elapsed     = int(time.time() - start)
+            prog.progress(100)
+            status.update(label=f"Done in {elapsed}s!", state="complete")
+
+            st.success("Your animation is ready.")
+            st.video(video_bytes)
+            st.download_button(
+                label="⬇️ Download .mp4",
+                data=video_bytes,
+                file_name="naturo_animation.mp4",
+                mime="video/mp4",
+                use_container_width=True,
+            )
+
+            # Session history
+            if "history" not in st.session_state:
+                st.session_state.history = []
+            st.session_state.history.append({
+                "prompt":  prompt[:80] + ("…" if len(prompt) > 80 else ""),
+                "elapsed": elapsed,
+            })
+
+        else:
+            prog.empty()
+            error = response.json().get("error", response.text)
+            status.update(label="Generation failed", state="error")
+            st.error(f"Error from inference server: {error}")
+
+    except requests.exceptions.Timeout:
+        prog.empty()
+        status.update(label="Timed out", state="error")
+        st.error("Request timed out after 10 minutes. The Kaggle notebook may have disconnected.")
+    except requests.exceptions.ConnectionError:
+        prog.empty()
+        status.update(label="Connection failed", state="error")
+        st.error("Could not reach the inference server. Check the ngrok URL is current and the Kaggle notebook is running.")
+    except Exception as e:
+        prog.empty()
+        status.update(label="Error", state="error")
+        st.error(f"Unexpected error: {e}")
+```
+
+### Session history (bottom of page)
+
+```python
+if st.session_state.get("history"):
+    st.divider()
+    with st.expander(f"Session history — {len(st.session_state.history)} video(s)"):
+        for i, item in enumerate(reversed(st.session_state.history), 1):
+            st.markdown(f"**{i}.** {item['prompt']} — `{item['elapsed']}s`")
+```
+
+---
+
+## requirements.txt
+
+```
+streamlit>=1.35.0
+Pillow>=10.0.0
+requests>=2.31.0
+```
+
+---
+
+## Deployment
+
+1. Push to GitHub
+2. Go to share.streamlit.io → New app → select repo → main file: `app.py`
+3. App settings → Secrets → paste:
+   ```toml
+   INFERENCE_URL = ""
+   ```
+   (leave blank — users paste the live ngrok URL in the sidebar)
+4. Deploy and share the URL
+
+---
+
+## What NOT to do
+
+- Do not auto-generate prompts — user writes the full prompt
+- Do not hardcode any ngrok URL
+- Do not add any video generation logic — the app only calls the external endpoint
+- Do not use deprecated Streamlit APIs (`st.experimental_rerun`, `use_column_width`, etc.)
+- Do not add login or auth UI

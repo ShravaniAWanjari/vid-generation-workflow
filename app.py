@@ -1,300 +1,320 @@
-import streamlit as st
-import time
-import io
-import os
-import requests
-from typing import Optional
-from PIL import Image
-from streamlit.runtime.uploaded_file_manager import UploadedFile
+"""
+app.py - Naturo AI Engine · Streamlit UI
+Horizontal Stepper Track Architecture
+"""
 
-# ---------------------------------------------------------
+import streamlit as st
+import os
+import time
+
+# Ensure dependencies are available before importing core modules
+try:
+    from prompt_compiler import compile_spatial_prompt
+    from pipeline_engine import execute_video_pipeline
+except ImportError as e:
+    st.error(f"Failed to import core modules: {e}. Please check requirements.")
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Page Configuration
-# ---------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Naturo AI Engine",
-    page_icon="🌿",
-    layout="centered",
-    initial_sidebar_state="collapsed"
+    page_icon="🎬",
+    layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
-# ---------------------------------------------------------
-# Custom Minimal Styles (Markdown-based for stability)
-# ---------------------------------------------------------
-st.markdown(
-    """
-    <div style="text-align: center; margin-top: 1rem; margin-bottom: 2.5rem;">
-        <h1 style="
-            background: linear-gradient(135deg, #059669, #10B981);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-family: 'Outfit', 'Inter', sans-serif;
-            font-size: 2.8rem;
-            font-weight: 800;
-            letter-spacing: -0.05em;
-            margin-bottom: 0.5rem;
-        ">
-            Naturo AI Animation Engine
-        </h1>
-        <p style="
-            color: #4B5563;
-            font-size: 1.15rem;
-            font-family: 'Inter', sans-serif;
-            font-weight: 400;
-            max-width: 600px;
-            margin: 0 auto;
-        ">
-            Generate high-end, ingredient-inspired product animations in seconds using state-of-the-art AI generation.
-        </p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+# ──────────────────────────────────────────────────────────────────────────────
+# CSS Overrides for Dark Mode & Horizontal Layout
+# ──────────────────────────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+/* 1. Global Dark Mode & Prevent Vertical Scrolling */
+html, body, [class*="css"], .stApp {
+    background-color: #0a0a0a !important;
+    color: #ffffff !important;
+    font-family: 'Inter', sans-serif;
+    overflow-y: hidden !important; 
+    overflow-x: hidden !important;
+}
 
-# ---------------------------------------------------------
-# Caching Background Removal
-# ---------------------------------------------------------
-@st.cache_data(show_spinner=False)
-def remove_background_cached(image_bytes: bytes) -> bytes:
-    """
-    Removes the background from the uploaded image and returns the bytes of the PNG.
+/* 2. Top Bar Wrapper - Fixed at top */
+.top-bar-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 5rem;
+    background-color: #0a0a0a;
+    border-bottom: 1px solid #2a2a2a;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    padding: 0 3rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.top-bar-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    flex-grow: 1;
+}
+
+.demo-toggle-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+/* 3. Main Horizontal Track */
+.block-container {
+    max-width: 100% !important;
+    padding-top: 6.5rem !important; /* Below the fixed top bar */
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+    padding-bottom: 0 !important;
+}
+
+div[data-testid="stHorizontalBlock"] {
+    display: flex;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    height: calc(100vh - 7rem);
+    padding-bottom: 1rem;
+    gap: 1.5rem;
+}
+
+/* 4. Individual Cards (Columns) */
+div[data-testid="column"] {
+    flex: 0 0 420px !important; 
+    min-width: 420px !important;
+    background-color: #111111;
+    border: 1px solid #333333;
+    border-radius: 12px;
+    padding: 1.5rem;
+    height: 100%;
+    overflow-y: auto;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+}
+
+/* Custom Scrollbar for horizontal container & cards */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+    background-color: #333;
+    border-radius: 10px;
+}
+
+/* 5. Typography & Widget Styling */
+h4 {
+    color: #e5e5e5;
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+}
+
+hr {
+    border-color: #2a2a2a;
+    margin-top: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Inputs & File Uploaders */
+div[data-baseweb="input"] > div, 
+div[data-baseweb="file-uploader"] {
+    background-color: #1a1a1a !important;
+    border: 1px solid #444 !important;
+}
+
+/* 6. Card 2 - Prompt Workspace Box */
+.stTextArea textarea {
+    background-color: #050505 !important;
+    border: 2px solid #555 !important;
+    font-family: monospace;
+    font-size: 13px;
+    color: #a3e635 !important; /* Distinct terminal-like color for emphasis */
+}
+
+/* 7. Card 4 - Status Pills */
+.status-pill {
+    display: inline-block;
+    padding: 0.35rem 1rem;
+    border-radius: 9999px;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 0.8rem;
+    width: 100%;
+    text-align: center;
+}
+.status-pill.success { border-color: #10b981; color: #10b981; }
+.status-pill.running { border-color: #3b82f6; color: #3b82f6; }
+.status-pill.error   { border-color: #ef4444; color: #ef4444; }
+
+/* Hide Streamlit header/footer */
+header[data-testid="stHeader"], footer {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Fixed Top Bar
+# ──────────────────────────────────────────────────────────────────────────────
+# We use a trick to render the toggle inside the normal flow but use CSS to 
+# pull a container to the top. However, Streamlit toggles are hard to pull out 
+# individually via CSS if we mix them with raw HTML. 
+# So we just render a regular column block for the top bar and apply CSS above.
+st.markdown('<div class="top-bar-wrapper">', unsafe_allow_html=True)
+top_col1, top_col2 = st.columns([1, 1])
+with top_col1:
+    st.markdown('<p class="top-bar-title">Naturo AI Engine 🎬</p>', unsafe_allow_html=True)
+with top_col2:
+    st.markdown('<div class="demo-toggle-container">', unsafe_allow_html=True)
+    demo_mode = st.toggle("Enable Cost-Free Demo Mode (Bypass Replicate Paywalls)", value=True, key="demo_mode")
+    st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+
+# Initialize Session State
+if "compiled_prompt" not in st.session_state:
+    st.session_state["compiled_prompt"] = ""
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Horizontal Stepper Track (4 Cards)
+# ──────────────────────────────────────────────────────────────────────────────
+c1, c2, c3, c4 = st.columns(4)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CARD 1: INGRESS INPUT
+# ══════════════════════════════════════════════════════════════════════════════
+with c1:
+    st.markdown("#### Card 1: Ingress Input")
+    st.markdown("<hr>", unsafe_allow_html=True)
     
-    Args:
-        image_bytes (bytes): The raw bytes of the uploaded image.
-        
-    Returns:
-        bytes: The bytes of the transparent foreground PNG.
-    """
-    from rembg import remove
-    print("\n[Naturo Engine] New image uploaded. Caching & extracting foreground via rembg...")
-    input_image = Image.open(io.BytesIO(image_bytes))
-    output_image = remove(input_image)
-    buffer = io.BytesIO()
-    output_image.save(buffer, format="PNG")
-    return buffer.getvalue()
-
-# ---------------------------------------------------------
-# Video API & Prompt Engine
-# ---------------------------------------------------------
-def generate_background_video(ingredients_text: str, api_key: str, image_path: Optional[str] = None) -> str:
-    """
-    Generates a background video using Hugging Face Inference Providers.
-    Uses the fal-ai provider with Wan2.1-I2V-14B-480P model, billed against
-    your free monthly HF credits.
+    product_image = st.file_uploader("Product Image (PNG)", type=["png"])
+    style_video = st.file_uploader("Style Reference (MP4)", type=["mp4", "mov"])
+    raw_intent = st.text_input("Ingredients / Raw Intent", placeholder="e.g. Tamarind pods & Rose flowers")
     
-    Args:
-        ingredients_text (str): Ingredients to build the video prompt from.
-        api_key (str): Hugging Face Access Token (starts with hf_).
-        image_path (str, optional): Path to the product image for image-to-video.
-    
-    Returns:
-        str: Path to the saved background video file.
-    """
-    from huggingface_hub import InferenceClient
-
-    # 1. Construct the prompt
-    prompt = (
-        f"Cinematic macro time-lapse photography of {ingredients_text} blooming and unfurling around the product, "
-        f"highly detailed organic textures, soft studio lighting, clean defocus bokeh background, "
-        f"shallow depth of field, high-end commercial cosmetics advertisement style, 8k resolution."
-    )
-    print(f"\n[Naturo Engine] Formatted Video Generation Prompt:\n{prompt}\n")
-    st.write(f"📝 **Formatted API Prompt:** `{prompt}`")
-
-    # 2. Submit the generation request via HF Inference Providers
-    st.write("📤 Submitting request to HF Inference Provider (fal-ai / Wan2.2-I2V-A14B)...")
-    print("[Naturo Engine] Submitting API Request via HF Inference Providers...")
-
-    try:
-        client = InferenceClient(
-            provider="fal-ai",
-            api_key=api_key,
-        )
-        st.write("⏳ Job queued successfully. Generating video (this may take 1-3 minutes)...")
-
-        if image_path and os.path.exists(image_path):
-            st.write("🖼️ Using Image-to-Video generation with the product image...")
-            video_bytes = client.image_to_video(
-                image=image_path,
-                prompt=prompt,
-                model="Wan-AI/Wan2.2-I2V-A14B",
-            )
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("Extract & Compile Prompt", use_container_width=True):
+        if product_image and style_video and raw_intent:
+            with st.spinner("Extracting & Compiling..."):
+                try:
+                    # Save to temp files
+                    img_path = "temp_product.png"
+                    vid_path = "temp_style.mp4"
+                    with open(img_path, "wb") as f: f.write(product_image.getbuffer())
+                    with open(vid_path, "wb") as f: f.write(style_video.getbuffer())
+                    
+                    from extractor import extract_keyframes
+                    kf_paths = extract_keyframes(vid_path, "temp_keyframes")
+                    
+                    prompt = compile_spatial_prompt(img_path, kf_paths, raw_intent)
+                    st.session_state["compiled_prompt"] = prompt
+                    st.success("Prompt compiled!")
+                except Exception as e:
+                    st.error(f"Error: {e}")
         else:
-            st.write("📝 Using Text-to-Video generation...")
-            video_bytes = client.text_to_video(
-                prompt=prompt,
-                model="Wan-AI/Wan2.1-T2V-14B",
-            )
+            st.warning("Please provide both assets and the text intent.")
 
-        output_filename = "bg_video.mp4"
-        with open(output_filename, "wb") as f:
-            f.write(video_bytes)
-        
-        print(f"[Naturo Engine] Video saved: {output_filename} ({len(video_bytes)} bytes)")
-        return output_filename
-    except Exception as e:
-        raise Exception(f"HF Inference Provider video generation failed: {e}")
-
-# ---------------------------------------------------------
-# Session State & Pipeline Control
-# ---------------------------------------------------------
-def run_animation_pipeline(image: UploadedFile, ingredients_list: str) -> None:
-    """
-    Runs the multi-step animation generation pipeline.
+# ══════════════════════════════════════════════════════════════════════════════
+# CARD 2: PROMPT WORKSPACE
+# ══════════════════════════════════════════════════════════════════════════════
+with c2:
+    st.markdown("#### Card 2: Prompt Workspace")
+    st.markdown("<hr>", unsafe_allow_html=True)
     
-    Args:
-        image (UploadedFile): The uploaded product image file.
-        ingredients_list (str): Text representing ingredients.
-    """
-    # 1. Securely check for the API key in Streamlit secrets
-    api_key: Optional[str] = st.secrets.get("HF_TOKEN", st.secrets.get("VIDEO_API_KEY"))
-    if not api_key:
-        st.error("❌ Configuration Error: `HF_TOKEN` was not found in `.streamlit/secrets.toml`. Please add your Hugging Face Access Token.")
-        return
+    edited_prompt = st.text_area(
+        "Compiled VLM Prompt (Editable)", 
+        value=st.session_state["compiled_prompt"], 
+        height=450,
+        help="This box will hold the spatially-structured prompt generated by GPT-4o-mini."
+    )
+    
+    # Sync edited prompt back to session state if user types
+    if edited_prompt != st.session_state["compiled_prompt"]:
+        st.session_state["compiled_prompt"] = edited_prompt
 
-    # Create the st.status container with expanded=True to show detailed progress
-    with st.status("Initializing Naturo AI engine...", expanded=True) as status:
-        # Step 1: Background Isolation
-        st.write("🔍 Extracting product silhouette & background elements...")
-        status.update(label="Extracting product...", state="running")
-        try:
-            from rembg import remove
-            from PIL import Image
-            import io
-            pil_img = Image.open(image)
-            extracted_img = remove(pil_img)
-            extracted_img.save("temp_product.png", format="PNG")
-            st.write("✅ Product background removed successfully. Saved as `temp_product.png`.")
-        except Exception as e:
-            st.error(f"❌ Foreground extraction failed: {e}")
-            status.update(label="Extraction failed", state="error")
-            return
-        time.sleep(2)
-        
-        # Step 2: Optimizing Prompt
-        st.write("✍️ Crafting optimized generation prompt from active ingredients...")
-        status.update(label="Optimizing prompt...", state="running")
-        time.sleep(2)
-        
-        # Step 3: Generating Video
-        st.write("🎬 Requesting and polling video generation API...")
-        status.update(label="Generating background video...", state="running")
-        try:
-            bg_video_path = generate_background_video(ingredients_list, api_key=api_key, image_path="temp_product.png")
-            st.write(f"✅ Background video successfully generated!")
-        except Exception as e:
-            st.error(f"❌ Video generation API failed: {e}")
-            status.update(label="Video generation failed", state="error")
-            return
+# ══════════════════════════════════════════════════════════════════════════════
+# CARD 3: VIDEO GENERATION MODEL
+# ══════════════════════════════════════════════════════════════════════════════
+with c3:
+    st.markdown("#### Card 3: Model Selector")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    
+    tier = st.radio("Select Generation Tier", [
+        "Tier 1: Decent Videos ($0.03)",
+        "Tier 2: Special Product Movements & Hyper-Realism ($0.12)",
+        "Tier 3: Precision Cinematic Shots ($0.25)"
+    ], index=1)
+    
+    st.markdown("<br><br><br><br><br>", unsafe_allow_html=True)
+    execute_btn = st.button("🚀 Execute Pipeline", type="primary", use_container_width=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CARD 4: OUTPUT & DELIVERY ARCHIVE
+# ══════════════════════════════════════════════════════════════════════════════
+with c4:
+    st.markdown("#### Card 4: Archive & Output")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    
+    if execute_btn:
+        if not edited_prompt.strip():
+            st.error("No prompt available. Please compile or type a prompt first.")
+        else:
+            payload = {
+                "demo_mode": demo_mode,
+                "compiled_prompt": edited_prompt,
+                "selected_tier": tier
+            }
             
-        # Step 4: Compositing Layers
-        st.write("✨ Applying realistic lighting, post-processing & composting...")
-        status.update(label="Compositing layers...", state="running")
-        try:
-            import PIL.Image
-            if not hasattr(PIL.Image, 'ANTIALIAS'):
-                PIL.Image.ANTIALIAS = getattr(PIL.Image, 'LANCZOS', getattr(PIL.Image.Resampling, 'LANCZOS', None))
+            status_placeholder = st.empty()
+            status_placeholder.markdown('<div class="status-pill running">⏳ Engine Processing Pipeline...</div>', unsafe_allow_html=True)
+            
+            # Use placeholder to simulate loading UI
+            player_placeholder = st.empty()
+            
+            try:
+                # Consume the generator to simulate step-by-step UI updates
+                for update in execute_video_pipeline(payload):
+                    if not update.get("done"):
+                        status_placeholder.markdown(f'<div class="status-pill running">⏳ {update["status"]}</div>', unsafe_allow_html=True)
+                    else:
+                        status = update["status"]
+                        active_tier = update["tier"]
+                        metadata_array = update["metadata"]
+                        status_placeholder.markdown(f'<div class="status-pill success">✅ Executed: {status}</div>', unsafe_allow_html=True)
                 
-            from moviepy.editor import VideoFileClip, ImageClip, CompositeVideoClip
-            bg_clip = VideoFileClip(bg_video_path)
-            
-            # Load temp_product.png
-            product_clip = ImageClip("temp_product.png")
-            
-            # Set duration
-            product_clip = product_clip.set_duration(bg_clip.duration)
-            
-            # Resize height to 75% of bg_clip.h
-            target_height = int(bg_clip.h * 0.75)
-            product_clip = product_clip.resize(height=target_height)
-            
-            # Position at bottom-center
-            product_clip = product_clip.set_position(('center', 'bottom'))
-            
-            # Composite
-            final_clip = CompositeVideoClip([bg_clip, product_clip])
-            
-            # Write to file
-            output_file = "naturo_final_delivery.mp4"
-            print("\n[Naturo Engine] Rendering final composited video using MoviePy... (this may take a moment)")
-            st.write("⚙️ Rendering final composited video (this may take a moment)...")
-            final_clip.write_videofile(
-                output_file, 
-                codec="libx264", 
-                audio_codec="aac", 
-                audio=False
-            )
-            
-            # Close clips to free resources
-            bg_clip.close()
-            product_clip.close()
-            final_clip.close()
-            
-            st.write("✅ Compositing complete!")
-        except Exception as e:
-            st.error(f"❌ Compositing failed: {e}")
-            status.update(label="Compositing failed", state="error")
-            return
-            
-        # Mark the status box as complete
-        status.update(label="Pipeline processing complete!", state="complete", expanded=False)
-        
-    st.success("🎉 Animation generated successfully! Ready to preview.")
-    
-    st.video("naturo_final_delivery.mp4")
-    
-    with open("naturo_final_delivery.mp4", "rb") as f:
-        st.download_button(
-            label="Download Final Video",
-            data=f,
-            file_name="naturo_final_delivery.mp4",
-            mime="video/mp4"
-        )
-
-# ---------------------------------------------------------
-# UI Layout & Input Section
-# ---------------------------------------------------------
-st.markdown("### 🛠️ Input Configuration")
-
-# Create a clean layout container for the inputs
-with st.container():
-    # File uploader for the product image
-    uploaded_file: Optional[UploadedFile] = st.file_uploader(
-        label="Upload Product Image",
-        type=["png", "jpg", "jpeg"],
-        help="Provide a high-quality product image against a clean background."
-    )
-
-    # Automatically process and display preview when image is uploaded
-    if uploaded_file is not None:
-        try:
-            preview_image: Image.Image = Image.open(uploaded_file)
-            st.image(
-                preview_image, 
-                caption=f"Uploaded Original Image: {uploaded_file.name}", 
-                use_container_width=True
-            )
-            
-        except Exception as e:
-            st.error(f"⚠️ Failed to display image: {e}")
-
-    # Text input for active ingredients
-    ingredients: str = st.text_input(
-        label="Active Ingredients",
-        placeholder="e.g., Aloe Vera, Green Tea, Avocado, Rosewater",
-        help="List the main ingredients that will shape the style and environment of the animation."
-    )
-
-# ---------------------------------------------------------
-# Execution Trigger
-# ---------------------------------------------------------
-st.markdown("---")
-
-if st.button("Generate Animation", type="primary", use_container_width=True):
-    # Validate inputs
-    if uploaded_file is None:
-        st.warning("⚠️ Please upload a product image before generating the animation.")
-    elif not ingredients.strip():
-        st.warning("⚠️ Please provide at least one active ingredient to guide the styling.")
+                if demo_mode:
+                    # Video Player
+                    video_path = "static/demo_output.mp4"
+                    if not os.path.exists(video_path):
+                        video_path = "demo.mp4"
+                    if os.path.exists(video_path):
+                        player_placeholder.video(video_path)
+                    else:
+                        player_placeholder.error("Demo video file missing.")
+                
+                st.markdown("**Storage Links:**")
+                for meta in metadata_array:
+                    link = meta.get("webViewLink")
+                    if link:
+                        st.link_button("🔗 Open Asset inside Google Drive Archive", link, use_container_width=True)
+                
+                st.markdown(f"<small>Model: {active_tier}</small>", unsafe_allow_html=True)
+                
+            except Exception as e:
+                status_placeholder.markdown('<div class="status-pill error">❌ Execution Failed</div>', unsafe_allow_html=True)
+                st.error(str(e))
     else:
-        # Proceed with pipeline execution
-        run_animation_pipeline(uploaded_file, ingredients)
+        st.info("Awaiting execution...")
+        st.markdown('<div style="height:250px; border: 1px dashed #333; display:flex; align-items:center; justify-content:center; color:#555;">Video Player Placeholder</div>', unsafe_allow_html=True)
