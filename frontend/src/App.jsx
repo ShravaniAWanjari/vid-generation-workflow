@@ -83,17 +83,19 @@ export default function App() {
   }
 
   const getDemoVideoSrc = () => {
-    if (!productImage) return "/demo.mp4";
+    // Dynamically fetch all mp4 files from the public folder
+    const videoModules = import.meta.glob('/public/*.mp4', { eager: true, query: '?url' });
+    const availableVideos = Object.keys(videoModules).map(path => path.replace('/public/', ''));
+    const globalFallback = availableVideos.length > 0 ? `/${availableVideos[0]}` : "";
+
+    if (!productImage) return globalFallback;
+    
     const baseName = productImage.name.split('.')[0];
     const baseNameUs = baseName.replace(/ /g, "_");
     
     let tierNum = 1;
     if (selectedTier.includes("Tier 2")) tierNum = 2;
     if (selectedTier.includes("Tier 3")) tierNum = 3;
-
-    // Dynamically fetch all mp4 files from the public folder
-    const videoModules = import.meta.glob('/public/*.mp4', { eager: true, query: '?url' });
-    const availableVideos = Object.keys(videoModules).map(path => path.replace('/public/', ''));
 
     // Filter videos that belong to this product
     const matchingVideos = availableVideos.filter(v => 
@@ -103,7 +105,7 @@ export default function App() {
 
     if (matchingVideos.length === 0) {
       // Global fallback if no product videos exist
-      return availableVideos.length > 0 ? `/${availableVideos[0]}` : "/demo.mp4";
+      return globalFallback;
     }
 
     const candidates = [];
