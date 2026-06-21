@@ -21,6 +21,7 @@ export default function App() {
     "Tier 3: Precision Cinematic Shots ($0.25)"
   ]
   const [selectedTier, setSelectedTier] = useState(tiers[1])
+  const [executedTier, setExecutedTier] = useState(tiers[1])
   
   // Card 4: Production Archive & Delivery
   const [isExecuting, setIsExecuting] = useState(false)
@@ -84,6 +85,7 @@ export default function App() {
     setTimeout(() => {
       console.log("Pipeline execution finished successfully.");
       setStatusEvents(prev => [...prev, { status: "Executed: SUCCESS", type: 'success' }]);
+      setExecutedTier(selectedTier); // Lock in the tier for the video player
       setWebViewLink('local-demo'); // Triggers local video loading
       setIsExecuting(false);
     }, 6500);
@@ -102,8 +104,8 @@ export default function App() {
     const baseNameUs = baseName.replace(/ /g, "_");
     
     let tierNum = 1;
-    if (selectedTier.includes("Tier 2")) tierNum = 2;
-    if (selectedTier.includes("Tier 3")) tierNum = 3;
+    if (executedTier.includes("Tier 2")) tierNum = 2;
+    if (executedTier.includes("Tier 3")) tierNum = 3;
 
     // Filter videos that belong to this product
     const matchingVideos = availableVideos.filter(v => 
@@ -142,30 +144,31 @@ export default function App() {
       <nav className="h-16 shrink-0 border-b border-neutral-800 bg-neutral-950 flex items-center justify-between px-8 z-50 shadow-sm">
         <div className="flex items-center space-x-3">
           <PlayCircle className="text-white w-6 h-6" />
-          <h1 className="text-white font-semibold tracking-wide">NOCT CREATIVE DISPATCH</h1>
+          <h1 className="text-white text-sm md:text-base font-semibold tracking-wide truncate">NOCT CREATIVE DISPATCH</h1>
         </div>
         <div className="flex items-center space-x-6">
-          <label className="flex items-center space-x-3 cursor-pointer">
+          <label className="flex items-center space-x-3 cursor-not-allowed opacity-80" title="Demo Mode is strictly enabled for this preview">
             <span className="text-sm font-medium text-neutral-300">Demo Mode</span>
             <div className="relative">
               <input 
                 type="checkbox" 
                 className="sr-only" 
-                checked={demoMode} 
-                onChange={(e) => setDemoMode(e.target.checked)} 
+                checked={true} 
+                readOnly
+                disabled
               />
-              <div className={`block w-10 h-6 rounded-full transition-colors ${demoMode ? 'bg-neutral-600' : 'bg-neutral-800'}`}></div>
-              <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${demoMode ? 'transform translate-x-4' : ''}`}></div>
+              <div className="block w-10 h-6 rounded-full transition-colors bg-neutral-600"></div>
+              <div className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform transform translate-x-4"></div>
             </div>
           </label>
         </div>
       </nav>
 
-      {/* Horizontal Stepper Workspace */}
-      <main className="flex-1 flex flex-row overflow-x-auto snap-x gap-16 p-10 px-16 custom-scrollbar items-stretch pb-12">
+      {/* Horizontal / Vertical Stepper Workspace */}
+      <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto md:overflow-y-hidden snap-y md:snap-x gap-8 md:gap-16 p-6 md:p-10 px-6 md:px-16 custom-scrollbar items-stretch pb-12">
         
         {/* CARD 1: Asset Assembly */}
-        <div className="snap-center shrink-0 min-w-[500px] w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-8 shadow-xl">
+        <div className="snap-start md:snap-center shrink-0 w-full md:min-w-[500px] md:w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 md:p-8 shadow-xl">
           <h2 className="text-white font-medium mb-4 flex items-center space-x-2">
             <span className="bg-neutral-800 text-xs px-2 py-1 rounded-full text-neutral-300">Step 1</span>
             <span>Asset Assembly</span>
@@ -221,7 +224,7 @@ export default function App() {
         </div>
 
         {/* CARD 2: Boxed Prompt Workspace */}
-        <div className="snap-center shrink-0 min-w-[500px] w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-8 shadow-xl">
+        <div className="snap-start md:snap-center shrink-0 w-full md:min-w-[500px] md:w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 md:p-8 shadow-xl">
           <h2 className="text-white font-medium mb-4 flex items-center space-x-2">
             <span className="bg-neutral-800 text-xs px-2 py-1 rounded-full text-neutral-300">Step 2</span>
             <span>Boxed Prompt Workspace</span>
@@ -239,7 +242,7 @@ export default function App() {
         </div>
 
         {/* CARD 3: Video Generation Engine */}
-        <div className="snap-center shrink-0 min-w-[500px] w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-8 shadow-xl">
+        <div className="snap-start md:snap-center shrink-0 w-full md:min-w-[500px] md:w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 md:p-8 shadow-xl">
           <h2 className="text-white font-medium mb-4 flex items-center space-x-2">
             <span className="bg-neutral-800 text-xs px-2 py-1 rounded-full text-neutral-300">Step 3</span>
             <span>Generation Engine</span>
@@ -280,7 +283,7 @@ export default function App() {
         </div>
 
         {/* CARD 4: Production Archive & Delivery */}
-        <div className="snap-center min-w-[380px] w-[26vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 shadow-xl">
+        <div className="snap-start md:snap-center shrink-0 w-full md:min-w-[380px] md:w-[26vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 shadow-xl">
           <h2 className="text-white font-medium mb-4 flex items-center space-x-2">
             <span className="bg-neutral-800 text-xs px-2 py-1 rounded-full text-neutral-300">Step 4</span>
             <span>Archive & Delivery</span>
