@@ -138,15 +138,15 @@ export default function App() {
   const videoSrc = !demoMode ? webViewLink : (webViewLink ? getDemoVideoSrc() : "");
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-neutral-950 text-neutral-400 overflow-hidden font-sans">
+    <div className="flex flex-col h-[100dvh] w-full bg-neutral-950 text-neutral-400 overflow-hidden font-sans">
       
       {/* Fixed Top Navbar */}
-      <nav className="h-16 shrink-0 border-b border-neutral-800 bg-neutral-950 flex items-center justify-between px-8 z-50 shadow-sm">
+      <nav className="h-16 shrink-0 border-b border-neutral-800 bg-neutral-950 flex items-center justify-between px-4 md:px-8 z-50 shadow-sm">
         <div className="flex items-center space-x-3">
           <PlayCircle className="text-white w-6 h-6" />
           <h1 className="text-white text-sm md:text-base font-semibold tracking-wide truncate">NOCT CREATIVE DISPATCH</h1>
         </div>
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center space-x-2 md:space-x-6">
           <label className="flex items-center space-x-3 cursor-not-allowed opacity-80" title="Demo Mode is strictly enabled for this preview">
             <span className="text-sm font-medium text-neutral-300">Demo Mode</span>
             <div className="relative">
@@ -165,7 +165,7 @@ export default function App() {
       </nav>
 
       {/* Horizontal / Vertical Stepper Workspace */}
-      <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto md:overflow-y-hidden snap-y md:snap-x gap-8 md:gap-16 p-6 md:p-10 px-6 md:px-16 custom-scrollbar items-stretch pb-12">
+      <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto md:overflow-y-hidden snap-y md:snap-x gap-6 md:gap-16 p-4 px-4 md:p-10 md:px-16 custom-scrollbar items-stretch pb-12 w-full">
         
         {/* CARD 1: Asset Assembly */}
         <div className="snap-start md:snap-center shrink-0 w-full md:min-w-[500px] md:w-[45vw] bg-neutral-900/40 border border-neutral-800 rounded-2xl flex flex-col p-6 md:p-8 shadow-xl">
