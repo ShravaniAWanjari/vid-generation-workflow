@@ -1,0 +1,7 @@
+# .vercelignore
+backend/
+data/
+__pycache__/
+.streamlit/
+*.py
+*.mp4
