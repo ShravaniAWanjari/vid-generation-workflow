@@ -78,11 +78,13 @@ async def compile_prompt(
                 f.write(await product_image.read())
 
             kf_paths = []
-            if style_video and style_video.filename != "empty.mp4" and style_video.filename != "":
-                vid_path = os.path.join(temp_dir, style_video.filename)
-                with open(vid_path, "wb") as f:
-                    f.write(await style_video.read())
-                kf_paths = extract_keyframes(vid_path, kf_dir)
+            if style_video and style_video.filename not in ("", "empty.mp4"):
+                video_content = await style_video.read()
+                if len(video_content) > 100:  # Only process if file has real content
+                    vid_path = os.path.join(temp_dir, style_video.filename)
+                    with open(vid_path, "wb") as f:
+                        f.write(video_content)
+                    kf_paths = extract_keyframes(vid_path, kf_dir)
                 
             # Execute Python modules
             compilation_result = compile_spatial_prompt(img_path, kf_paths, raw_intent)

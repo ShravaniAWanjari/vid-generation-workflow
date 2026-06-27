@@ -74,11 +74,16 @@ export default function App() {
       setCompiledPrompt(data.compiled_prompt || "");
       console.log(`Prompt compilation finished successfully. Extracted Product: ${data.product_name}`);
     } catch (error) {
-      console.log("Backend API not available. Falling back to simulation...", error);
+      // If the backend returned a real validation error (e.g. nonsensical intent), show it directly
+      if (error.message && !error.message.includes('Failed to fetch') && !error.message.includes('NetworkError') && !error.message.includes('HTTP Error 502') && !error.message.includes('HTTP Error 503') && !error.message.includes('HTTP Error 504')) {
+        alert(error.message);
+        setIsCompiling(false);
+        return;
+      }
       
-      // Attempt to call Gemini Vision directly from the frontend if API key is provided
+      console.log("Backend API not available. Falling back to direct Gemini call...", error);
+      
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      let simulatedProductName = "";
       
       if (apiKey && productImage) {
         try {
@@ -93,7 +98,7 @@ export default function App() {
             body: JSON.stringify({
               contents: [{
                 parts: [
-                  { text: "Identify the exact product name from this image. Output ONLY the short product name (e.g. 'Radiating Face Cream', 'Kumkumadi Face Cream'). Do not include any other text." },
+                  { text: `You are an expert prompt compiler for video diffusion networks.\n\nAnalyze this product image and the raw text intent below.\n\n**Raw Intent:** "${rawIntent}"\n\nFirst, check if the raw intent is relevant to creating a commercial product video (e.g., describes ingredients, visual style, animation). If the intent is nonsensical, unrelated to the product, or gibberish (e.g., 'spooderman', 'hello world', random words), respond with EXACTLY:\n{"error": "The prompt text does not provide information consistent with creating a commercial video for this product. Please describe the desired ingredients or visual style."}\n\nIf the intent IS valid, respond with EXACTLY this JSON (no markdown):\n{"product_name": "Extracted Product Name", "compiled_prompt": "A cinematic macro commercial shot..."}` },
                   { inlineData: { mimeType: productImage.type || 'image/png', data: base64Image } }
                 ]
               }]
@@ -101,24 +106,29 @@ export default function App() {
           });
           
           const geminiData = await geminiResponse.json();
-          simulatedProductName = geminiData.candidates[0].content.parts[0].text.trim();
-          console.log("Direct Gemini Vision extraction:", simulatedProductName);
+          let resultText = geminiData.candidates[0].content.parts[0].text.trim();
+          
+          // Strip markdown code fences if present
+          resultText = resultText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+          
+          const result = JSON.parse(resultText);
+          
+          if (result.error) {
+            alert(result.error);
+            setIsCompiling(false);
+            return;
+          }
+          
+          setExtractedProductName(result.product_name || "Unknown Product");
+          setCompiledPrompt(result.compiled_prompt || "");
+          console.log(`Direct Gemini compilation finished. Product: ${result.product_name}`);
         } catch (err) {
           console.error("Direct Gemini call failed:", err);
+          alert("Could not compile prompt. Please check your connection or try again.");
         }
+      } else {
+        alert("Backend API is unavailable and no API key is configured. Please run the backend locally or set VITE_GEMINI_API_KEY.");
       }
-      
-      if (!simulatedProductName) {
-        const baseName = productImage.name.split('.')[0];
-        simulatedProductName = baseName.replace(/_/g, " ").replace(/-/g, " ");
-        console.log("Fell back to filename extraction:", simulatedProductName);
-      }
-      
-      const simulatedPrompt = `A cinematic macro commercial shot. The camera is positioned in a static placement, framing the product container in the center. In a seamless, slow pan/zoom out motion, the product container remains perfectly still, static, and unaltered in the center. Highly detailed textures, soft studio lighting, high-end commercial advertisement style. \n\n(Intent: ${rawIntent})`;
-      
-      setExtractedProductName(simulatedProductName);
-      setCompiledPrompt(simulatedPrompt);
-      console.log(`Fallback simulation finished. Extracted Product: ${simulatedProductName}`);
     } finally {
       setIsCompiling(false);
     }
