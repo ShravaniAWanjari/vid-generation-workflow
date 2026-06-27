@@ -74,14 +74,21 @@ export default function App() {
       setCompiledPrompt(data.compiled_prompt || "");
       console.log(`Prompt compilation finished successfully. Extracted Product: ${data.product_name}`);
     } catch (error) {
-      // If the backend returned a real validation error (e.g. nonsensical intent), show it directly
-      if (error.message && !error.message.includes('Failed to fetch') && !error.message.includes('NetworkError') && !error.message.includes('HTTP Error 502') && !error.message.includes('HTTP Error 503') && !error.message.includes('HTTP Error 504')) {
+      // If it's a 400 Validation Error from our backend (e.g. intent rejected), show it!
+      if (error.message && error.message.includes('HTTP Error 400')) {
+        alert("Prompt rejected by VLM: Make sure your intent matches the product image.");
+        setIsCompiling(false);
+        return;
+      }
+      
+      // If it's not a 5xx/Network error, but a direct error string from the backend, show it
+      if (error.message && !error.message.includes('HTTP Error') && !error.message.includes('Failed to fetch') && !error.message.includes('NetworkError')) {
         alert(error.message);
         setIsCompiling(false);
         return;
       }
       
-      console.log("Backend API not available. Falling back to direct Gemini call...", error);
+      console.log("Backend API not available or crashed. Falling back to direct Gemini call...", error);
       
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       
