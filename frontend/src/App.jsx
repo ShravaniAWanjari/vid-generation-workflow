@@ -10,6 +10,7 @@ export default function App() {
   const [styleVideo, setStyleVideo] = useState(null)
   const [rawIntent, setRawIntent] = useState('')
   const [isCompiling, setIsCompiling] = useState(false)
+  const [compileError, setCompileError] = useState('')
   
   // Card 2: Boxed Prompt Workspace
   const [compiledPrompt, setCompiledPrompt] = useState('')
@@ -32,8 +33,9 @@ export default function App() {
   const [hasError, setHasError] = useState(false)
 
   const handleCompilePrompt = async () => {
+    setCompileError('')
     if (!productImage || !rawIntent) {
-      alert('Please provide a Product Image and Raw Intent.')
+      setCompileError('Please provide a Product Image and Raw Intent.')
       return
     }
     
@@ -76,14 +78,14 @@ export default function App() {
     } catch (error) {
       // If it's a 400 Validation Error from our backend (e.g. intent rejected), show it!
       if (error.message && error.message.includes('HTTP Error 400')) {
-        alert("Prompt rejected by VLM: Make sure your intent matches the product image.");
+        setCompileError("Prompt rejected by VLM: Make sure your intent matches the product image.");
         setIsCompiling(false);
         return;
       }
       
       // If it's not a 5xx/Network error, but a direct error string from the backend, show it
       if (error.message && !error.message.includes('HTTP Error') && !error.message.includes('Failed to fetch') && !error.message.includes('NetworkError')) {
-        alert(error.message);
+        setCompileError(error.message);
         setIsCompiling(false);
         return;
       }
@@ -121,7 +123,7 @@ export default function App() {
           const result = JSON.parse(resultText);
           
           if (result.error) {
-            alert(result.error);
+            setCompileError(result.error);
             setIsCompiling(false);
             return;
           }
@@ -131,10 +133,10 @@ export default function App() {
           console.log(`Direct Gemini compilation finished. Product: ${result.product_name}`);
         } catch (err) {
           console.error("Direct Gemini call failed:", err);
-          alert("Could not compile prompt. Please check your connection or try again.");
+          setCompileError("Could not compile prompt. Please check your connection or try again.");
         }
       } else {
-        alert("Backend API is unavailable and no API key is configured. Please run the backend locally or set VITE_GEMINI_API_KEY.");
+        setCompileError("Backend API is unavailable and no API key is configured. Please run the backend locally or set VITE_GEMINI_API_KEY.");
       }
     } finally {
       setIsCompiling(false);
@@ -326,7 +328,13 @@ export default function App() {
             </div>
           </div>
 
-          <div className="pt-6 mt-auto border-t border-neutral-800/50">
+          <div className="pt-6 mt-auto border-t border-neutral-800/50 flex flex-col space-y-4">
+            {compileError && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg flex items-start space-x-2">
+                <XCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <span>{compileError}</span>
+              </div>
+            )}
             <button 
               onClick={handleCompilePrompt}
               disabled={isCompiling}
